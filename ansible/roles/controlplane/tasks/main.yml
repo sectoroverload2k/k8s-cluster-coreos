@@ -1,0 +1,51 @@
+---
+- name: copy kubeadm cluster config
+  copy:
+    src: files/clusterconfig.yml
+    dest: /root/clusterconfig.yml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: init the cluster
+  command: kubeadm init --config /root/clusterconfig.yml
+  args:
+    creates: /etc/kubernetes/admin.conf
+  register: clusterinit
+
+- name: setup root .kube dir
+  file:
+    state: directory
+    dest: "~/.kube"
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: copy root k8s admin config
+  copy:
+    remote_src: true
+    src: /etc/kubernetes/admin.conf
+    dest: ~/.kube/config
+    owner: root
+    group: root
+
+- name: fetch k8s admin config
+  ansible.builtin.fetch:
+    src: /etc/kubernetes/admin.conf
+    dest: configs/k8s-admin.conf
+    flat: true
+
+- name: copy kube-router config
+  copy:
+    src: files/kubeadm-kuberouter.yml
+    dest: /root/kubeadm-kuberouter.yml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: setup kubernetes router
+  command: kubectl apply -f /root/kubeadm-kuberouter.yml
+  args:
+    creates: /etc/cni/net.d/10-kuberouter.conflist
+  register: routerinit
+

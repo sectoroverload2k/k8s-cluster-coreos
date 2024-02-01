@@ -1,0 +1,76 @@
+---
+- name: kubernetes yum repo
+  copy:
+    src: files/kubernetes.repo
+    dest: /etc/yum.repos.d/kubernetes.repo
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: install k8s kubelet
+  command: rpm-ostree install kubelet
+  register: kubeletinstalled
+  notify: "reboot-and-wait"
+  ignore_errors: yes
+  changed_when: "'Changes queued for next boot' in kubeletinstalled.stdout"
+
+- fail: msg="{{ kubeletinstalled.stderr }}"
+  when: "kubeletinstalled.rc != 0 and 'is already requested' not in kubeletinstalled.stderr"
+
+- name: install k8s kubeadm
+  command: rpm-ostree install kubeadm
+  register: kubeadminstalled
+  notify: "reboot-and-wait"
+  ignore_errors: yes
+  changed_when: "'Changes queued for next boot' in kubeadminstalled.stdout"
+
+- fail: msg="{{ kubeadminstalled.stderr }}"
+  when: "kubeadminstalled.rc != 0 and 'is already requested' not in kubeadminstalled.stderr"
+
+- name: install k8s kubectl
+  command: rpm-ostree install kubectl
+  register: kubectlinstalled
+  notify: "reboot-and-wait"
+  ignore_errors: yes
+  changed_when: "'Changes queued for next boot' in kubectlinstalled.stdout"
+
+- fail: msg="{{ kubectlinstalled.stderr }}"
+  when: "kubectlinstalled.rc != 0 and 'is already requested' not in kubectlinstalled.stderr"
+
+- name: install k8s cri-o
+  command: rpm-ostree install cri-o
+  register: crioinstalled
+  notify: "reboot-and-wait"
+  ignore_errors: yes
+  changed_when: "'Changes queued for next boot' in crioinstalled.stdout"
+
+- fail: msg="{{ crioinstalled.stderr }}"
+  when: "crioinstalled.rc != 0 and 'is already requested' not in crioinstalled.stderr"
+
+- name: reboot after k8 install
+  raw: reboot
+  when: kubeletinstalled.changed or kubeadminstalled.changed or kubectlinstalled.changed or crioinstalled.changed
+  register: k8installed
+
+- name: wait for reboot
+  become: false
+  wait_for:
+    port: 22
+    host: '{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}'
+    delay: 10
+    timeout: 300
+  connection: local
+  when: k8installed.changed
+
+- name: start crio service
+  ansible.builtin.systemd_service:
+    name: crio
+    state: started
+    enabled: true
+
+- name: start kubelet service
+  ansible.builtin.systemd_service:
+    name: kubelet
+    state: started
+    enabled: true
+

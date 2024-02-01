@@ -1,0 +1,15 @@
+---
+- name: set hostname
+  ansible.builtin.hostname:
+    name: '{{ inventory_hostname }}'
+  register: changehostname
+  notify: "reboot-and-wait"
+
+- name: wait for connection
+  become: false
+  wait_for:
+    port: 22
+    host: '{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}'
+    timeout: 120
+  connection: local
+  when: changehostname.changed

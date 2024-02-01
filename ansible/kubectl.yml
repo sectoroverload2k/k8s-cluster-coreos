@@ -1,0 +1,49 @@
+---
+- hosts: controlplane
+  gather_facts: false
+  become: true
+  tasks:
+    - name: fetch k8s admin conf
+      ansible.builtin.fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: configs/k8s-admin.conf
+        flat: true
+
+- hosts: localhost
+  gather_facts: true
+  become: true
+  roles:
+    - kubectl # for centos/redhat only
+
+- hosts: all, !controlplane
+  gather_facts: true
+  tasks:
+    - name: setup root .kube dir
+      become: true
+      file:
+        state: directory
+        dest: "~/.kube"
+        owner: root
+        group: root
+        mode: '0755'
+    - name: copy root k8s admin config
+      become: true
+      copy:
+        src: configs/k8s-admin.conf
+        dest: ~/.kube/config
+
+- hosts: nodes
+  gather_facts: true
+  tasks:
+    - name: setup local .kube dir
+      file:
+        state: directory
+        dest: "~/.kube"
+        mode: '0755'
+    - name: copy local k8s admin config
+      copy:
+        src: configs/k8s-admin.conf
+        dest: ~/.kube/config
+       
+
+

@@ -1,0 +1,78 @@
+---
+#
+# PLAYBOOK TO INSTALL KUBERNETES CLUSTER
+#
+# file kubernetes.yml
+#
+
+#
+# INIT THE COREOS WITH PYTHON AND KUBERNETES YUM REPO
+#
+- hosts: nodes
+  gather_facts: no
+  become: true
+  roles:
+    - coreos
+    - common
+
+#
+# INSTALL KUBENERNETES ON ALL NODES
+#
+- hosts: nodes
+  become: true
+  roles:
+    - kubernetes
+
+#
+# CONFIGURE CONTROL PLANE AND ROUTERS
+#
+- hosts: controlplane
+  become: true
+  roles:
+    - controlplane
+
+#
+# JOIN NODES TO THE CLUSTER
+#
+- hosts: nodes
+  become: true
+  tasks:
+    - name: get join cluster command
+      command: kubeadm token create --print-join-command
+      register: joincommand
+      failed_when: "'kubeadm join' not in joincommand.stdout"
+      changed_when: false
+      delegate_to: node1
+      run_once: true
+        #when: inventory_hostname in groups['controlplane']
+
+
+    - name: debug join command
+      ansible.builtin.debug:
+        var: joincommand
+      when: joincommand.stdout is defined
+      run_once: true
+
+    - name: join the cluster
+      command: "{{ joincommand.stdout }}"
+      register: joining
+      args:
+        creates: /var/lib/kubelet/config.yaml
+      changed_when: "'This node has joined the cluster' in joining.stdout"
+      when: inventory_hostname not in groups['controlplane']
+
+    - name: debug joining cluster
+      ansible.builtin.debug:
+        var: joining.stdout_lines
+      when: joining.changed
+
+    - name: check nodes
+      command: kubectl get nodes
+      register: getnodes
+      changed_when: false
+      when: inventory_hostname in groups['controlplane']
+
+    - name: debug node list
+      ansible.builtin.debug:
+        var: getnodes
+      when: getnodes.stdout is defined

@@ -1,0 +1,4 @@
+---
+- name: reboot-and-wait
+  raw: reboot
+  listen: "reboot-and-wait"
