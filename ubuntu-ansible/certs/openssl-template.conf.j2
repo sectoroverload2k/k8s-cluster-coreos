@@ -1,0 +1,23 @@
+[req]
+req_extensions = v3_req
+distinguished_name = req_distinguished_name
+[req_distinguished_name]
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = kubernetes
+DNS.2 = kubernetes.default
+DNS.3 = kubernetes.default.svc
+DNS.4 = kubernetes.default.svc.cluster.local
+IP.1 = 127.0.0.1
+{% set ns = namespace(count = 2) %}
+{% for i in groups['masters'] %}
+{% set ns.count = ns.count + 1 %}
+IP.{{ ns.count }} = {{ hostvars[i]['ansible_default_ipv4']['address'] }}
+{% endfor %}
+{% for i in groups['loadbalancers'] %}
+{% set ns.count = ns.count + 1 %}
+IP.{{ ns.count }} = {{ hostvars[i]['ansible_default_ipv4']['address'] }}
+{% endfor %}

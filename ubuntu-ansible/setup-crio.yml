@@ -1,0 +1,32 @@
+---
+- hosts: nodes,masters
+  become: true
+  gather_facts: true
+  vars_files: vars.yml
+
+  tasks:
+  - lineinfile:
+      dest: /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+      line: "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_22.04/ /"
+      create: true
+
+  - lineinfile:
+      dest: "/etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:{{ crio_version }}.list"
+      line: "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ crio_version }}/xUbuntu_22.04/ /"
+      create: true
+
+  - get_url: 
+      url: "https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:{{ crio_version }}/xUbuntu_22.04/Release.key"
+      dest: "{{ downloads_dir }}/cri-o.{{ crio_version }}.release.key"
+
+  - get_url:
+     url: "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_22.04/Release.key"
+     dest: "{{ downloads_dir }}/libcontainers-stable.release.key"
+
+  - command: "apt-key add {{ item }}"
+    with_items:
+      - "{{ downloads_dir }}/cri-o.{{ crio_version }}.release.key"
+      - "{{ downloads_dir }}/libcontainers-stable.release.key"
+
+  - command: "apt-get update"
+  - command: "apt install cri-o"

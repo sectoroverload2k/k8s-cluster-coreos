@@ -1,0 +1,137 @@
+---
+- hosts: nodes
+  gather_facts: true
+  become: false
+  vars_files: vars.yml
+  tasks:
+
+
+  - name: check if token already generated
+    stat:
+      path: "{{ configs_dir }}/tls-token"
+    register: tlstokenfile
+    delegate_to: localhost
+    run_once: true
+
+    #
+    # CREATE TOKEN
+    #
+  - block:
+
+    - name: generate token name
+      shell: |
+        head -c 32 /dev/urandom | base64 | \
+        sed 's/[^a-z0-9]*//g' | \
+        tr '[:upper:]' '[:lower:]' | \
+        cut -c 1-6
+      register: tokenname
+
+
+    - name: generate token secret 
+      shell: |
+        head -c 32 /dev/urandom | base64 | \
+        sed 's/[^a-z0-9]*//g' | \
+        tr '[:upper:]' '[:lower:]' | \
+        cut -c 1-16
+      register: tokensecret
+
+    - set_fact:
+        token_name: "{{ tokenname.stdout }}"
+        token_secret: "{{ tokensecret.stdout }}"
+
+    - lineinfile:
+        dest: "{{ configs_dir }}/tls-token"
+        line: "{{ token_name }}.{{ token_secret }}"
+        create: true
+
+    - name: create bootstrap token file
+      template:
+        src: templates/bootstrap-token.yaml.j2
+        dest: "{{ configs_dir }}/bootstrap-token-{{ tokenname.stdout }}.yaml"
+
+
+    when: tlstokenfile.stat.exists == false
+    delegate_to: localhost
+    run_once: true
+
+    #
+    # READ TOKEN FROM FILE
+    #
+  - block:
+
+    - name: get token name
+      shell: |
+        cat "{{ configs_dir }}/tls-token" | \
+        cut -d '.' -f 1
+      register: tokenname
+
+    - name: get token secret
+      shell: |
+        cat "{{ configs_dir }}/tls-token" | \
+        cut -d '.' -f 2
+      register: tokensecret
+
+    - set_fact:
+       token_name: "{{ tokenname.stdout }}"
+       token_secret: "{{ tokensecret.stdout }}"
+
+
+    when: tlstokenfile.stat.exists == true
+    delegate_to: localhost
+    run_once: true
+
+
+  - name: create token in k8s
+    command: kubectl create -f "{{ configs_dir }}/bootstrap-token-{{ token_name }}.yaml"
+    register: k8stoken
+    delegate_to: localhost
+    run_once: true
+    ignore_errors: true
+
+  - fail:
+      msg: "{{ k8stoken.stderr }}"
+    when: 
+      - k8stoken.rc == 1
+      - "'AlreadyExists' not in k8stoken.stderr"
+
+
+  - name: create-csrs-for-bootstrapping
+    command: kubectl create -f "files/csrs-for-bootstrapping.yaml"
+    delegate_to: localhost
+    run_once: true
+    register: csrbootstrap
+    ignore_errors: true
+
+  - fail:
+      msg: "{{ csrbootstrap.stderr }}"
+    when:
+      - csrbootstrap.rc == 1
+      - "'AlreadyExists' not in csrbootstrap.stderr"
+
+  - name: auto-approve-csrs-for-group
+    command: kubectl create -f "files/auto-approve-csrs-for-group.yaml"
+    delegate_to: localhost
+    run_once: true
+    register: csrapprove
+    ignore_errors: true
+
+  - fail:
+      msg: "{{ csrapprove.stderr }}"
+    when:
+      - csrapprove.rc == 1
+      - "'AlreadyExists' not in csrapprove.stderr"
+
+  - name: auto-approve-renewals-for-nodes
+    command: kubectl create -f "files/auto-approve-renewals-for-nodes.yaml"
+    delegate_to: localhost
+    run_once: true
+    register: csrrenewals
+    ignore_errors: true
+
+  - fail:
+      msg: "{{ csrrenewals.stderr }}"
+    when:
+      - csrrenewals.rc == 1
+      - "'AlreadyExists' not in csrrenewals.stderr"
+
+

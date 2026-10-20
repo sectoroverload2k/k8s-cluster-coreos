@@ -47,20 +47,39 @@
 - fail: msg="{{ crioinstalled.stderr }}"
   when: "crioinstalled.rc != 0 and 'is already requested' not in crioinstalled.stderr"
 
+# - name: install k8s docker
+#   command: rpm-ostree install docker.io
+#   register: dockerinstalled
+#   notify: "reboot-and-wait"
+#   ignore_errors: yes
+#   changed_when: "'Changes queued for next boot' in dockerinstalled.stdout"
+# 
+# - fail: msg="{{ dockerinstalled.stderr }}"
+#   when: "dockerinstalled.rc != 0 and 'is already requested' not in dockerinstalled.stderr"
+
 - name: reboot after k8 install
   raw: reboot
-  when: kubeletinstalled.changed or kubeadminstalled.changed or kubectlinstalled.changed or crioinstalled.changed
+  when: kubeletinstalled.changed or kubeadminstalled.changed or kubectlinstalled.changed or crioinstalled.changed #or dockerinstalled.changed
   register: k8installed
 
 - name: wait for reboot
-  become: false
+#  become: false
   wait_for:
     port: 22
-    host: '{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}'
+#    host: '{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}'
     delay: 10
     timeout: 300
-  connection: local
+#  connection: local
   when: k8installed.changed
+
+- name: modprobe overlay
+  command: modprobe overlay
+
+#- name: modprobe br_netfilter
+#  command: br_netfilter
+
+- name: sysctl --system
+  command: sysctl --system
 
 - name: start crio service
   ansible.builtin.systemd_service:
@@ -73,4 +92,29 @@
     name: kubelet
     state: started
     enabled: true
+
+#- name: start docker service
+#  ansible.builtin.systemd_service:
+#    name: docker
+#    state: started
+#    enabled: true
+
+- name: Disable SWAP
+  command: swapoff -a
+
+- name: disable swap in fstab
+  replace:
+    path: /etc/fstab
+    regexp: '^[^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+  ignore_errors: true
+
+- name: sysctl kubernetes.conf
+  copy: 
+    src: files/sysctl.d-kubernetes.conf
+    dest: /etc/sysctl.d/kubernetes.conf
+    owner: root
+    group: root
+    mode: '0644'
+
 

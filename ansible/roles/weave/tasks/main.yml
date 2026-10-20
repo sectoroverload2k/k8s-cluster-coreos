@@ -1,0 +1,21 @@
+---
+- name: copy weave config
+  copy:
+    src: files/weave-daemonset-k8s.yaml
+    dest: /root/weave-daemonset-k8s.yaml
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: install weave
+  command: kubectl apply -f /root/weave-daemonset-k8s.yaml
+
+- name: copy weave binary
+  copy:
+    src: files/weave
+    dest: /usr/local/bin/weave
+    owner: root
+    group: root
+    mode: '0755'
+
+

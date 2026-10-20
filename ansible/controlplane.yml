@@ -1,0 +1,20 @@
+#
+# CONFIGURE CONTROL PLANE AND ROUTERS
+#
+- hosts: controlplane
+  become: true
+  vars:
+    podsubnet: 10.0.0.0/16
+    servicesubnet: 10.128.0.0/16
+    calico_cidr: 10.0.0.0/16
+    dnsdomain: cluster.local
+    k8network: none # flannel / kube-router / calico
+    clustername: linsday-home
+    kube_config_file: kubeadm-kuberouter.yml
+  roles:
+    - clean-firewall
+    - controlplane
+    #- calico
+    #- kube-router
+    - weave
+    #- flannel # FUCKS SHIT UP!!!!!

@@ -1,0 +1,112 @@
+---
+
+- file:
+    path: /etc/kubernetes/config
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+#
+# GET BINARIES
+#
+- name: download binaries
+  get_url:
+    url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubernetes_version }}/bin/linux/amd64/{{ item }}"
+    dest: "{{ downloads_dir }}/{{ item }}"
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+    - kubectl
+  delegate_to: 'localhost'
+  run_once: true
+
+- name: copy binaries
+  copy:
+    src: "{{ downloads_dir }}/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+    - kubectl
+
+#
+# COPY CERTIFICATES
+#
+- file:
+    path: /var/lib/kubernetes
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- copy:
+    src: "{{ item }}"
+    dest: /var/lib/kubernetes
+  with_items:
+    - "{{ ca_crtfile }}"
+    - "{{ ca_keyfile }}"
+    - "{{ components.apiserver.crtfile }}"
+    - "{{ components.apiserver.keyfile }}"
+    - "{{ components.controller.crtfile }}"
+    - "{{ components.controller.keyfile }}"
+    - "{{ components.service.crtfile }}"
+    - "{{ components.service.keyfile }}"
+    - "{{ components.etcd.crtfile }}"
+    - "{{ components.etcd.keyfile }}"
+    - "{{ configs_dir }}/encryption-config.yaml"
+
+
+#
+# KUBECONFIGS 
+#
+- name: "copy kubeconfig"
+  copy:
+    src: "{{ configs_dir }}/{{ item }}.kubeconfig"
+    dest: /var/lib/kubernetes/
+    owner: root
+    group: root
+    mode: '0644'
+  with_items:
+    - admin
+    - kube-controller-manager
+    - kube-scheduler    
+
+#
+# SYSTEMD SERVICES
+#
+- name: "configure systemd service"
+  template: 
+    src: "templates/{{ item }}.service.j2"
+    dest: "/etc/systemd/system/{{ item }}.service"
+    owner: root
+    group: root
+    mode: '0644'
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler    
+
+- systemd_service:
+    daemon_reload: true
+    name: "{{ item }}"
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+
+- systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: restarted
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+
+

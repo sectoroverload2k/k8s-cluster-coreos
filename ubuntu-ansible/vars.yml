@@ -1,0 +1,88 @@
+
+    kubectl_version: "v1.29.1"
+    kubernetes_version: "v1.29.1"
+    etcd_version: "v3.5.12"
+    kompose_version: "v1.31.2"
+    weave_version: "v2.8.1"
+    crio_version: "1.24"
+
+    cluster_name: "linsday"
+    service_cidr: "10.96.0.0/24"
+    cluster_cidr: "192.168.128.0/24"
+
+    certs_dir: "./certs"
+    configs_dir: "./configs"
+    tlsconfigs_dir: "./tlsconfigs"
+    downloads_dir: "./downloads"
+
+    ca_crtfile: "./certs/ca.crt"
+    ca_csrfile: "./certs/ca.csr"
+    ca_keyfile: "./certs/ca.key"
+
+    kubernetes_domains:
+      - kubernetes
+      - kubernetes.default
+      - kubernetes.default.svc
+      - kubernetes.default.svc.cluster.local
+
+    service_ips:
+      - 10.96.0.1
+      - 127.0.0.1
+    cluster_dns_ip: 10.96.0.10
+    cluster_domain: "cluster.local"
+
+
+    cert_not_after: "+3650d" # 10 years
+
+    components:
+      admin:
+        name: "admin"
+        subject: "CN=admin,O=system:masters"
+        keyfile: "./certs/admin.key"
+        csrfile: "./certs/admin.csr"
+        crtfile: "./certs/admin.crt"
+
+      controller:
+        name: "kube-controller-manager"
+        subject: "CN=system:kube-controller-manager"
+        keyfile: "./certs/kube-controller-manager.key"
+        csrfile: "./certs/kube-controller-manager.csr"
+        crtfile: "./certs/kube-controller-manager.crt"
+
+      proxy:
+        name: "kube-proxy"
+        subject: "CN=system:kube-proxy"
+        keyfile: "./certs/kube-proxy.key"
+        csrfile: "./certs/kube-proxy.csr"
+        crtfile: "./certs/kube-proxy.crt"
+
+      scheduler:
+        name: "kube-scheduler"
+        subject: "CN=system:kube-scheduler"
+        keyfile: "./certs/kube-scheduler.key"
+        csrfile: "./certs/kube-scheduler.csr"
+        crtfile: "./certs/kube-scheduler.crt"
+
+      apiserver:
+        name: "kube-apiserver"
+        subject: "CN=kube-apiserver"
+        keyfile: "./certs/kube-apiserver.key"
+        csrfile: "./certs/kube-apiserver.csr"
+        crtfile: "./certs/kube-apiserver.crt"
+        use_san: true
+
+      etcd:
+        name: "etcd-server"
+        subject: "CN=etcd-server"
+        keyfile: "./certs/etcd-server.key"
+        csrfile: "./certs/etcd-server.csr"
+        crtfile: "./certs/etcd-server.crt"
+        use_san: true
+
+      service:
+        name: "service-account"
+        subject: "CN=service-accounts"
+        keyfile: "./certs/service-account.key"
+        csrfile: "./certs/service-account.csr"
+        crtfile: "./certs/service-account.crt"
+ 

@@ -1,0 +1,9 @@
+type: LoadBalancer
+externalIPs:
+  - 192.168.121.110
+  - 192.168.121.111
+  - 192.168.121.112
+  - 192.168.121.113
+  - 192.168.121.114
+  - 192.168.121.115
+externalTrafficPolicy: Local

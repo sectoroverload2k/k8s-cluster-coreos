@@ -1,0 +1,18 @@
+---
+- name: copy config files
+  copy:
+    src: files/metallb-native.yml
+    dest: /root/metallb-native.yml
+    owner: root
+    group: root
+    mode: '0644'
+
+- copy:
+    src: files/metallb.yml
+    dest: /root/metallb-init.yml
+    owner: root
+    group: root
+    mode: '0644'
+
+- command: kubectl apply -f /root/metallb-native.yml
+- command: kubectl apply -f /root/metallb-init.yml

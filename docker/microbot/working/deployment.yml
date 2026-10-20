@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  creationTimestamp: "2024-02-10T08:35:10Z"
+  generation: 1
+  labels:
+    app: microbot
+  name: microbot
+  namespace: default
+  resourceVersion: "5559"
+  uid: b8ba256f-bc28-4d0c-a3a3-0b393a033c2b
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: microbot
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: microbot
+    spec:
+      containers:
+      - image: dontrebootme/microbot:v1
+        imagePullPolicy: IfNotPresent
+        name: microbot
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: "2024-02-10T08:35:14Z"
+    lastUpdateTime: "2024-02-10T08:35:14Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2024-02-10T08:35:11Z"
+    lastUpdateTime: "2024-02-10T08:35:14Z"
+    message: ReplicaSet "microbot-66f488557d" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  observedGeneration: 1
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1

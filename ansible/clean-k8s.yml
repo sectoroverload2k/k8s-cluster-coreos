@@ -1,0 +1,74 @@
+---
+- hosts: nodes
+  gather_facts: true
+  become: true
+  roles:
+    - clean-firewall
+  tasks:
+    - name: reset cluster
+      command: kubeadm reset --force
+
+    - name: cleanup root config
+      file:
+        state: absent
+        dest: "~/.kube/config"
+
+    - name: cleanup core user config
+      become: false
+      file:
+        state: absent
+        dest: "~/.kube/config"
+
+    - name: delete network interfaces
+      command: ip link delete "{{ item }}"
+      with_items:
+        - kube-bridge
+        - kube-dummy-if
+        - cni0
+        - docker0
+      ignore_errors: true
+
+    - name: delete k8s networking conf
+      file:
+        state: absent
+        dest: "{{ item }}"
+      with_items:
+        - /etc/cni/net.d/10-flannel.conflist
+        - /opt/cni/bin/flannel
+        - /etc/cni/net.d/10-kuberouter.conflist
+        - /etc/cni/net.d/10-kuberouter.conf
+        - /etc/cni/net.d/10-calico.conflist
+        - /etc/cni/net.d/calico-kubeconfig
+        - /opt/cni/bin/calico
+        - /opt/cni/bin/calico-ipam
+        - /etc/cni/net.d/10-weave.conflist
+        - /opt/cni/bin/weave-ipam
+        - /opt/cni/bin/weave-net
+        - /opt/cni/bin/weave-plugin-latest
+
+    - name: stop services
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: stopped
+      with_items:
+        - kubelet
+        - crio
+
+    - name: disable docker
+      ansible.builtin.systemd_service:
+        name: docker
+        state: stopped
+        enabled: false
+
+    - name: disable nftables
+      ansible.builtin.systemd_service:
+        name: nftables
+        state: stopped
+        enabled: false
+
+
+    - name: clear firewall rules
+      command: "{{ item }}"
+      with_items:
+        - "iptables --flush"
+        - "iptables --flush -tnat"

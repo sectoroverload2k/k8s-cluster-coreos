@@ -1,0 +1,77 @@
+---
+- name: install with repos
+  block:
+
+  - file:
+      path: "{{ downloads_dir }}"
+      state: directory
+
+  - name: download k8s release key
+    get_url:
+      url: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version }}/deb/Release.key"
+      dest: "/tmp/kubernetes-{{ kubernetes_version }}-release.key"
+  
+  - name: install k8s repo key
+    shell: "cat /tmp/kubernetes-{{ kubernetes_version }}-release.key | apt-key add -"
+  
+  - name: create apt repo
+    template:
+      src: templates/kubernetes.list
+      dest: /etc/apt/sources.list.d/kubernetes.list
+      owner: root
+      group: root
+      mode: '0644'
+  
+  - name: install k8s
+    package:
+      name: "{{ item }}"
+      state: latest
+    with_items:
+      - kubectl
+      - kubelet
+      - kubeadm
+  when: false
+
+- file:
+    path: "{{ item }}" 
+    state: absent
+  with_items:
+    - /etc/apt/sources.list.d/kubernetes.list
+    - "/tmp/kubernetes-{{ kubernetes_version }}-release.key"
+
+- name: install manually
+  block:
+
+  - file:
+      path: "{{ downloads_dir }}"
+      state: directory
+
+  - name: download kubectl
+    get_url:
+      url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/{{ item }}"
+      dest: "{{ downloads_dir }}/{{ item }}"
+      owner: root
+      group: root
+      mode: '0755'
+    with_items:
+      - kubectl
+      - kubeadm
+
+  - copy: 
+      remote_src: true
+      src: "{{ downloads_dir }}/{{ item }}"
+      dest: "/usr/local/bin/{{ item }}"
+      owner: root
+      group: root
+      mode: '0755'
+    with_items:
+      - kubectl
+      - kubeadm
+
+  - command: "kubectl version --client"
+    register: kubectl_version
+
+  - debug: var=kubectl_version
+
+  when: true
+  tags: kubectl

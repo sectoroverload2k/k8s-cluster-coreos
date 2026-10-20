@@ -1,0 +1,27 @@
+#
+
+#
+# https://github.com/flannel-io/flannel#deploying-flannel-manually
+#
+#mkdir -p /opt/cni/bin
+#curl -O -L https://github.com/containernetworking/plugins/releases/download/v1.2.0/cni-plugins-linux-amd64-v1.2.0.tgz
+#tar -C /opt/cni/bin -xzf cni-plugins-linux-amd64-v1.2.0.tgz
+
+
+# https://medium.com/@kosta709/kubernetes-by-kubeadm-config-yamls-94e2ee11244
+# https://raw.githubusercontent.com/coreos/flannel/bc79dd1505b0c8681ece4de4c0d86c5cd2643275/Documentation/kube-flannel.yml
+
+
+# https://github.com/flannel-io/flannel/releases/download/v0.24.2/kube-flannel.yml
+---
+- name: copy coreos-flannel config
+  template:
+    src: templates/kube-flannel.v0.24.2.yml
+    dest: /root/coreos-flannel.yml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: apply coreos-flannel config
+  command: kubectl apply -f /root/coreos-flannel.yml
+

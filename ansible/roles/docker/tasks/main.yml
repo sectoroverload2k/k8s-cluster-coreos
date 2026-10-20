@@ -1,0 +1,46 @@
+---
+- name: install yum-utils
+  package:
+    name:
+      - yum-utils
+
+- name: install docker-ce repo
+  command: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+  args:
+    creates: /etc/yum.repo.d/docker-ce.repo
+
+- name: install docker-ce
+  package:
+    state: latest
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+
+- name: download docker-compose file
+  ansible.builtin.get_url:
+    url: "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-{{ ansible_facts['system'] | lower }}-{{ ansible_facts['architecture'] }}"
+    checksum: "sha256:https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-{{ ansible_facts['system'] | lower }}-{{ ansible_facts['architecture'] }}.sha256"
+    dest: /usr/bin/docker-compose
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: download kompose file
+  ansible.builtin.get_url:
+    url: "https://github.com/kubernetes/kompose/releases/download/v1.31.2/kompose-{{ ansible_facts['system'] | lower }}-amd64"
+    checksum: sha256:761699339d32b13cddd57d9f9e2966b6397ee19e722c20bfbf45c8eeeffe0ae5
+    dest: /usr/local/bin/kompose
+    owner: root
+    group: root
+    mode: '0755'
+  when: ansible_facts['architecture'] == "x86_64"
+
+- name: start docker service
+  ansible.builtin.systemd_service:
+    name: docker
+    state: started
+
+

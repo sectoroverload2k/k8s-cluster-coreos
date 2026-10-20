@@ -1,0 +1,16 @@
+[Unit]
+Description=Kubernetes Kubelet
+Documentation=https://github.com/kubernetes/kubernetes
+After=docker.service
+Requires=docker.service
+
+[Service]
+ExecStart=/usr/local/bin/kubelet \
+  --config=/var/lib/kubelet/kubelet-config.yaml \
+  --kubeconfig=/var/lib/kubelet/{{ inventory_hostname }}.kubeconfig \
+  --v=2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

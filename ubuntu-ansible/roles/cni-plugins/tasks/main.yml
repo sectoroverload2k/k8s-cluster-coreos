@@ -1,0 +1,55 @@
+---
+
+- name: fetch cni-plugin binaries
+  block:
+
+  - name: download cni-plugins
+    get_url:
+      url: "https://github.com/containernetworking/plugins/releases/download/v0.7.5/cni-plugins-amd64-v0.7.5.tgz"
+      dest: "{{ downloads_dir }}/"
+
+
+  - file: 
+      dest: "{{ downloads_dir }}/cni-plugins"
+      state: directory
+
+  - command: "tar -zxvf {{ downloads_dir }}/cni-plugins-amd64-v0.7.5.tgz --directory {{ downloads_dir }}/cni-plugins/"
+
+
+  delegate_to: localhost
+  run_once: true
+
+
+- name: deploy cni-plugin binaries
+  block:
+
+  - file:
+      path: /opt/cni/bin
+      state: directory
+      owner: root
+      group: root
+      mode: '0644'
+
+  - copy:
+      src: "{{ downloads_dir }}/cni-plugins/{{ item }}"
+      dest: "/opt/cni/bin/{{ item }}"
+      owner: root
+      group: root
+      mode: '0755'
+    with_items: 
+      - bridge
+      - dhcp
+      - flannel
+      - host-device
+      - host-local
+      - ipvlan
+      - loopback
+      - macvlan
+      - portmap
+      - ptp
+      - sample
+      - tuning
+      - vlan
+
+  when: inventory_hostname in groups['nodes']
+

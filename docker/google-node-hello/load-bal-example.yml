@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: load-balancer-example
+  name: hello-world
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: load-balancer-example
+  template:
+    metadata:
+      labels:
+        app: load-balancer-example
+    spec:
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: hello-world 
+
+      containers:
+      - image: gcr.io/google-samples/node-hello:1.0
+        name: hello-world
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-world-service
+spec:
+  selector:
+    app: load-balancer-example
+  ports:
+    - port: 8080
+  externalIPs:
+    - 192.168.128.15
+
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: hello-world-ingress
+# spec:
+#   type: NodePort
+#   ports:
+#   - name: http
+#     protocol: TCP
+#     port: 8080
+#     targetPort: 8080
+#     nodePort: 30001
+#   selector:
+#     app: load-balancer-example
+#   externalIPs:
+#     - 192.168.128.15
+
+
+#---
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  name: hello-world
+#spec:
+#  type: LoadBalancer
+#  externalTrafficPolicy: Local
+#  ports:
+#  - name: http
+#    port: 80
+#    targetPort: 80
+#  selector:
+#    app: hello-world-ingress
+#  externalIPs:
+#    - 192.168.128.15

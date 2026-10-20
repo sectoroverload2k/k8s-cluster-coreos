@@ -1,0 +1,37 @@
+---
+- name: install required packages
+  package:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - vim
+    - mlocate
+    - python3-apt
+#    - aufs-tools
+    - software-properties-common
+    - conntrack
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - unzip
+  ignore_errors: true
+
+- file:
+    dest: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- command: updatedb
+
+- name: update /etc/hosts file
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*{{ item }}$'
+    line: "{{ hostvars[item].ansible_default_ipv4.address }} {{ item }}"
+    state: present
+  with_items: "{{ groups['all'] }}"
+  when: hostvars[item].ansible_default_ipv4.address is defined
+
+  tags: hostsfile

@@ -1,0 +1,20 @@
+---
+- name: copy 10-kuberouter.conf
+  copy:
+    src: files/etc-cni-10-kuberouter.conf
+    dest: /etc/cni/net.d/10-kuberouter.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: copy kube-router
+  copy:
+    src: "files/{{ kube_config_file }}"
+    dest: /root/kubeadm-kuberouter.yaml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: install kube-router
+  command: kubectl apply -f /root/kubeadm-kuberouter.yaml
+# files/kubeadm-kuberouter.yml 

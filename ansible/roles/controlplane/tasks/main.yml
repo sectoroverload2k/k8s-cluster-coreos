@@ -1,7 +1,20 @@
 ---
+
+- name: start crio service
+  ansible.builtin.systemd_service:
+    name: crio
+    state: started
+    enabled: true
+
+- name: start kubelet service
+  ansible.builtin.systemd_service:
+    name: kubelet
+    state: started
+    enabled: true
+
 - name: copy kubeadm cluster config
-  copy:
-    src: files/clusterconfig.yml
+  template:
+    src: templates/clusterconfig.yml.j2
     dest: /root/clusterconfig.yml
     owner: root
     group: root
@@ -35,17 +48,109 @@
     dest: configs/k8s-admin.conf
     flat: true
 
-- name: copy kube-router config
-  copy:
-    src: files/kubeadm-kuberouter.yml
-    dest: /root/kubeadm-kuberouter.yml
-    owner: root
-    group: root
-    mode: '0644'
 
-- name: setup kubernetes router
-  command: kubectl apply -f /root/kubeadm-kuberouter.yml
-  args:
-    creates: /etc/cni/net.d/10-kuberouter.conflist
-  register: routerinit
+#
+# KUBE ROUTER
+#
+- name: Install kube-router
+  block:
+    - name: copy kube-router config
+      copy:
+        src: files/kubeadm-kuberouter.yml
+        dest: /root/kubeadm-kuberouter.yml
+        owner: root
+        group: root
+        mode: '0644'
+    
+    - name: setup kubernetes router
+      command: kubectl apply -f /root/kubeadm-kuberouter.yml
+      args:
+        creates: /etc/cni/net.d/10-kuberouter.conflist
+      register: routerinit
+  when: k8network == 'kube-router'
+
+#
+# FLANNEL NETWORKS
+# https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+#
+- name: Install flannel networking
+  block:
+    - name: copy flannel network config
+      copy:
+        src: files/kube-flannel.yml
+        dest: /root/kube-flannel.yml
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: setup flannel network
+      command: kubectl apply -f /root/kube-flannel.yml
+      register: flannelinit
+  when: k8network == 'flannel'
+
+
+#
+# CALICO NETWORK
+# https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
+#
+- name: Install calico networking
+  block:
+    - name: copy calico network config
+      copy:
+        src: files/calico.yml
+        dest: /root/calico.yml
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: setup calico network
+      command: kubectl apply -f /root/calico.yml
+      register: calicoinit
+
+  when: k8network == 'calico'
+
+
+
+# - name: copy kube-metallb config
+#   copy:
+#     # https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml
+#     src: files/metallb-native.yaml
+#     dest: /root/metallb-native.yaml
+#     owner: root
+#     group: root
+#     mode: '0644'
+# 
+# - name: setup metallb loadbalancers
+#   command: kubectl apply -f /root/metallb-native.yaml
+#   register: lbinit
+# 
+# 
+# 
+# #roles/controlplane/files/ingress-nginx.yaml
+# - name: copy ingress-nginx config
+#   copy:
+#     # https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.43.0/deploy/static/provider/baremetal/deploy.yaml
+#     src: files/ingress-nginx.yaml
+#     dest: /root/ingress-nginx.yaml
+#     owner: root
+#     group: root
+#     mode: '0644'
+# 
+# - name: setup ingress-nginx
+#   command: kubectl apply -f /root/ingress-nginx.yaml
+#   register: nginxinit
+# 
+# 
+# - name: copy ipaddress ranges
+#   template:
+#     src: templates/network.yml.j2
+#     dest: /root/network.yml
+#     owner: root
+#     group: root
+#     mode: '0644'
+# 
+# - name: setup ipaddress ranges
+#   command: kubectl apply -f /root/network.yml
+#   register: networkinit
+
 

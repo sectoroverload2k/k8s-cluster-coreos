@@ -1,0 +1,87 @@
+---
+- hosts: all
+  gather_facts: true
+  become: false
+  vars_files: vars.yml
+
+  tasks:
+
+    - block:
+      - set_fact:
+          loadbalancer_ip: "{{ groups['loadbalancers'] | map('extract', hostvars, ['ansible_default_ipv4','address']) | first }}"
+      - debug: var=loadbalancer_ip
+  
+      - file: 
+          path: "{{ configs_dir }}"
+          state: directory
+      delegate_to: localhost
+
+
+
+    #
+    # WORKER KUBELET CONFIG
+    #
+    - name: setup kubelet configs
+      block:
+
+      - name: set-cluster
+        shell: |
+          kubectl config set-cluster {{ cluster_name }} \
+          --certificate-authority={{ ca_crtfile }} \
+          --embed-certs=true \
+          --server=https://{{ loadbalancer_ip }}:6443 \
+          --kubeconfig={{ configs_dir }}/{{ inventory_hostname }}.kubeconfig
+
+      - name: set-credentials
+        shell: |
+          kubectl config set-credentials system:node:{{ inventory_hostname }} \
+          --client-certificate={{ certs_dir }}/{{ inventory_hostname }}.crt \
+          --client-key={{ certs_dir }}/{{ inventory_hostname }}.key \
+          --embed-certs=true \
+          --kubeconfig={{ configs_dir }}/{{ inventory_hostname }}.kubeconfig
+
+      - name: set-context
+        shell: |
+          kubectl config set-context default \
+          --cluster={{ cluster_name }} \
+          --user=system:node:{{ inventory_hostname }} \
+          --kubeconfig={{ configs_dir }}/{{ inventory_hostname }}.kubeconfig
+
+      - name: use-context
+        shell: |
+          kubectl config use-context default --kubeconfig={{ configs_dir }}/{{ inventory_hostname }}.kubeconfig
+
+      tags: kubelet
+      delegate_to: localhost
+      when: inventory_hostname in groups['nodes']
+
+
+
+    #
+    # DEPLOY CONFIGS AND CERTS
+    #
+    - name: copy configs and certs
+      block:
+
+      - file:
+          state: directory
+          path: "{{ item }}"
+        with_items:
+          - "{{ configs_dir }}"
+          - "{{ certs_dir }}"
+
+      - copy:
+          src: "{{ configs_dir }}/{{ inventory_hostname }}.kubeconfig"
+          dest: "{{ configs_dir }}/{{ inventory_hostname }}.kubeconfig"
+
+      - copy:
+          src: "{{ item }}"
+          dest: "{{ certs_dir }}"
+        with_items: 
+          - "{{ certs_dir }}/{{ inventory_hostname }}.crt"
+          - "{{ certs_dir }}/{{ inventory_hostname }}.key"
+
+      when: inventory_hostname in groups['nodes']
+      tags: deploy-configs
+
+

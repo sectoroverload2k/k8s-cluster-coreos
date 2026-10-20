@@ -1,0 +1,32 @@
+---
+- systemd_service:
+    name: "{{ item }}"
+    state: stopped
+  ignore_errors: true
+  with_items:
+    - etcd
+    - kube-apiserver
+    - kube-scheduler
+    - kube-proxy
+
+- file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /var/lib/kubernetes
+    - /etc/etcd
+    - "{{ configs_dir }}"
+    - "{{ downloads_dir }}"
+    - "{{ certs_dir }}"
+    - "/etc/etcd"
+    - "/usr/local/share/ca-certificates/extra/{{ ca_crtfile | basename }}"
+    - "/etc/systemd/system/etcd.service"
+    - "/etc/systemd/system/kube-apiserver.service"
+    - "/etc/systemd/system/kube-controller-manager.service"
+    - "/etc/systemd/system/kube-scheduler.service"
+    - "/home/anthony/kube-controller-manager.kubeconfig"
+    - "/home/anthony/kube-proxy.kubeconfig"
+
+- systemd_service:
+    daemon_reload: true
+

@@ -1,0 +1,22 @@
+---
+- hosts: controlplane
+  become: true
+
+  roles:
+    - metallb
+
+# install first
+# see : https://metallb.universe.tf/installation/
+
+  tasks:
+#    - name: debug
+#      debug: var=hostvars[inventory_hostname]['ansible_default_ipv4']
+    - name: get enp0s8 ipv4
+      set_fact:
+        clusterip: "{{ hostvars[inventory_hostname]['ansible_enp0s8']['ipv4']['address'] }}"
+
+#    - name: debug
+#      debug: var=hostvars[inventory_hostname]['ansible_enp0s8']['ipv4']['address']
+
+#    - name: init kubeadm cluster
+#      command: kubeadm init --apiserver-advertise-address {{ clusterip }} --control-plane-endpoint {{ clusterip }}

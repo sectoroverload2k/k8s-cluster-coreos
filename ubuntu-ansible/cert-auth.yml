@@ -1,0 +1,88 @@
+---
+- hosts: all
+  gather_facts: true
+  become: false
+  vars_files: vars.yml
+
+  tasks:
+
+    - name: Create CA certificates
+      block:
+  
+      - name: create certs dir
+        file: 
+          state: directory
+          dest: "./certs"
+    
+      - name: generate private key for ca
+        community.crypto.openssl_privatekey:
+          path: "{{ ca_keyfile }}"
+          size: 2048
+          type: "RSA"
+        register: caprivatekey
+    
+      - name: generate csr
+        community.crypto.openssl_csr:
+          privatekey_path: "{{ ca_keyfile }}"
+          subject: "CN=KUBERNETES-CA"
+          path: "{{ ca_csrfile }}"
+          basic_constraints:
+            - "CA:TRUE"
+          basic_constraints_critical: true
+          key_usage_critical: true
+          key_usage:
+            - keyEncipherment
+            #- dataEncipherment
+            #- digitalSignature
+            - keyCertSign
+            #- digitalSignature
+          extended_key_usage:
+            - serverAuth
+            - clientAuth
+        register: cacsr
+    
+      - name: sign csr with private key
+        community.crypto.x509_certificate:
+          path: "{{ ca_crtfile }}"
+          csr_path: "{{ ca_csrfile }}"
+          privatekey_path: "{{ ca_keyfile }}"
+          provider: selfsigned
+
+      tags: ca
+      when: inventory_hostname == 'localhost'
+      run_once: true
+  
+
+    - name: Generate and sign certs
+      block:
+        - name: gen certs
+          include_tasks: create-certs.yml
+          with_dict: "{{ components }}"
+
+      tags: certs
+      when: inventory_hostname == 'localhost'
+      run_once: true
+
+    #
+    # INSTALL CA FILES
+    #
+    - block:
+      - file:
+          dest: "/usr/local/share/ca-certificates/extra"
+          state: directory
+          owner: root
+          group: root
+          mode: '0755'
+        become: true
+
+      - copy:
+          src: "{{ ca_crtfile }}"
+          dest: /usr/local/share/ca-certificates/extra/
+        become: true
+
+      - command: update-ca-certificates
+        become: true
+      when: inventory_hostname != 'localhost'
+      
+
+

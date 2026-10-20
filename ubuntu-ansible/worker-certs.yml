@@ -1,0 +1,65 @@
+---
+- debug: var=inventory_hostname
+- block:
+  - name: "create private key"
+    community.crypto.openssl_privatekey:
+      path: "{{ certs_dir }}/{{ inventory_hostname }}.key"
+      size: 2048
+      type: "RSA"
+    register: privatekey
+
+
+  - set_fact:
+      masters: "{{ groups['masters'] }}"
+      loadbalancers: "{{ groups['loadbalancers'] }}"
+
+  - set_fact:
+      ip_line: "IP:{{ ansible_default_ipv4.address }}"
+      dns_line: "DNS:{{ inventory_hostname }}"
+
+  - debug: var=ip_line
+  - debug: var=dns_line
+
+  - set_fact:
+      csr_san: "{{ dns_line }},{{ ip_line }}"
+
+  - debug: var=csr_san
+
+
+  # SUBJECT:  CN = system:node:node1, O = system:nodes
+
+  - name: "generate csr with SAN"
+    community.crypto.openssl_csr:
+      privatekey_path: "{{ certs_dir }}/{{ inventory_hostname }}.key"
+      subject: "CN=system:node:{{ inventory_hostname }},O=system:nodes"
+      path: "{{ certs_dir }}/{{ inventory_hostname }}.csr"
+      subject_alt_name: "{{ csr_san }}"
+      basic_constraints:
+        - "CA:FALSE"
+      #basic_constraints_critical: true
+      #key_usage_critical: true
+      key_usage:
+        - keyEncipherment
+      #  - dataEncipherment
+        - nonRepudiation
+        - digitalSignature
+      #  - keyCertSign
+      #  - digitalSignature
+      #extended_key_usage:
+      #  - serverAuth
+      #  - clientAuth
+    register: csr
+
+  - name: "sign csr with ca key"
+    community.crypto.x509_certificate:
+      path: "{{ certs_dir }}/{{ inventory_hostname }}.crt"
+      csr_path: "{{ certs_dir }}/{{ inventory_hostname }}.csr"
+      ownca_path: "{{ ca_crtfile }}"
+      ownca_privatekey_path: "{{ ca_keyfile }}"
+      ownca_not_before: "-1d"
+      ownca_not_after: "{{ cert_not_after }}"
+      provider: ownca
+    register: signedcert
+
+
+  delegate_to: localhost

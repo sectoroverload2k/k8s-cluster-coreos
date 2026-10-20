@@ -32,7 +32,7 @@
         src: configs/k8s-admin.conf
         dest: ~/.kube/config
 
-- hosts: nodes
+- hosts: all
   gather_facts: true
   tasks:
     - name: setup local .kube dir

@@ -1,0 +1,81 @@
+---
+
+
+- name: install apt gpg key
+  get_url:
+    url: "https://download.docker.com/linux/ubuntu/gpg"
+    dest: /etc/apt/keyrings/docker.asc
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: setup apt repo
+  copy:
+    src: files/docker.list
+    dest: /etc/apt/sources.list.d/docker.list
+    owner: root
+    group: root
+    mode: '0644'
+  register: aptconfig
+
+- command: apt-get update
+  when: aptconfig.changed
+
+
+- package:
+    name: "{{ item }}"
+    state: absent
+  with_items:
+    - docker
+    - docker.io
+    - docker-doc
+    - docker-compose
+    - docker-compose-v2
+    - podman-docker
+    - containerd
+    - runc
+
+- file:
+    path: /var/lib/docker
+    state: absent
+
+
+- package:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - docker-ce
+    - docker-ce-cli
+    - containerd
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin
+    - cgroup-tools
+    - cgroupfs-mount
+
+- command: cgroupfs-mount
+
+- name: download kompose file
+  ansible.builtin.get_url:
+    url: "https://github.com/kubernetes/kompose/releases/download/{{ kompose_version }}/kompose-{{ ansible_facts['system'] | lower }}-amd64"
+    checksum: sha256:761699339d32b13cddd57d9f9e2966b6397ee19e722c20bfbf45c8eeeffe0ae5
+    dest: /usr/local/bin/kompose
+    owner: root
+    group: root
+    mode: '0755'
+  when: ansible_facts['architecture'] == "x86_64"
+
+#- name: start docker service
+#  ansible.builtin.systemd_service:
+#    name: docker
+#    state: started
+
+- file:
+    path: /etc/containerd/config.toml
+    state: absent
+
+- name: restart containerd
+  systemd_service:
+    name: containerd
+    state: restarted
+

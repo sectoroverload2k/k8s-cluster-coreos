@@ -1,0 +1,116 @@
+---
+#- hosts: localhost
+#  become: false
+#  tasks:
+#    - name: install cert functionality
+#      command: ansible-galaxy collection install community.crypto
+
+#    - name: install cert functionality
+#      command: ansible-galaxy collection install ansible.posix
+#      tags:
+#        - mounts
+#        - galaxy
+#
+#- hosts: all, !localhost
+#  gather_facts: true
+#  become: true
+#  vars_files: vars.yml
+#  roles:
+#    - refresh
+
+- hosts: all, !localhost
+  gather_facts: true
+  become: true
+  vars_files: vars.yml
+#
+  roles:
+#    - common
+    - kubectl-client
+#
+#- name: setup certificate authority
+#  import_playbook: cert-auth.yml
+
+
+#- hosts: all, !localhost
+#  gather_facts: true
+#  vars_files: vars.yml
+#  tasks:
+#    - set_fact:
+#        loadbalancer_ip: "{{ groups['loadbalancers'] | map('extract', hostvars, ['ansible_default_ipv4','address']) | first }}"
+#
+#    - debug: var=loadbalancer_ip
+#
+#- import_playbook: kubectl-config.yml
+#- import_playbook: encryption.yml
+#
+#
+#- hosts: masters
+#  gather_facts: true
+#  become: true
+#  vars_files: vars.yml
+#  roles:
+#    - etcd-server
+#    - controlplane
+#
+#- hosts: all
+#  gather_facts: true
+#  become: true
+#  vars_files: vars.yml
+#  roles:
+#    - ha-proxy
+
+#- hosts: nodes
+#  gather_facts: true
+#  become: false
+#  vars_files: vars.yml
+#  tasks: 
+#    - include: worker-certs.yml
+#      tags: certs
+
+
+
+#
+# ONLY USE ONE OF THESE
+#
+# ALLOW AUTO-REGISTER AND CERT SIGNING
+#- import_playbook: tls-bootstrap-workers.yml
+#- import_playbook: kubelet-tls-config.yml # NEEDS MORE WORK
+#
+# CONFIGURE WITH PRE-SIGNED CERTS
+#- import_playbook: kubelet-config.yml
+
+
+
+#- hosts: nodes
+#  gather_facts: true
+#  become: true
+#  vars_files: vars.yml
+#  roles: 
+#    - docker
+#    - workers
+
+
+
+
+#- hosts: all
+#  gather_facts: true
+#  become: true
+#  vars_files: vars.yml
+#  roles:
+#    - cni-plugins
+
+#- hosts: masters
+#  gather_facts: true
+#  become: true
+#  vars_files: vars.yml
+#  roles:
+#    - weave-networking
+#### TRYING KUBE-ROUTER INSTEAD
+
+
+
+- include: setup-crio.yml
+
+
+
+

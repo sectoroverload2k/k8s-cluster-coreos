@@ -1,0 +1,11 @@
+---
+- name: copy firewall rules
+  copy:
+    src: files/rules
+    dest: /root/clean-firewall-rules.txt
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: clear firewall rules
+  raw: "iptables-restore < /root/clean-firewall-rules.txt"

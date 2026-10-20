@@ -1,0 +1,133 @@
+Chain PREROUTING (policy ACCEPT)
+target     prot opt source               destination         
+KUBE-SERVICES  0    --  0.0.0.0/0            0.0.0.0/0            /* kubernetes service portals */
+DOCKER     0    --  0.0.0.0/0            0.0.0.0/0            ADDRTYPE match dst-type LOCAL
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination         
+KUBE-SERVICES  0    --  0.0.0.0/0            0.0.0.0/0            /* kubernetes service portals */
+DOCKER     0    --  0.0.0.0/0           !127.0.0.0/8          ADDRTYPE match dst-type LOCAL
+
+Chain POSTROUTING (policy ACCEPT)
+target     prot opt source               destination         
+KUBE-POSTROUTING  0    --  0.0.0.0/0            0.0.0.0/0            /* kubernetes postrouting rules */
+MASQUERADE  0    --  172.17.0.0/16        0.0.0.0/0           
+MASQUERADE  0    --  0.0.0.0/0            0.0.0.0/0            match-set kube-router-pod-subnets src ! match-set kube-router-pod-subnets dst ! match-set kube-router-node-ips dst random-fully
+SNAT       0    -- !10.0.2.0/24         !10.0.2.0/24          vdir ORIGINAL vmethod MASQ /*  */ to:192.168.128.102 random-fully
+SNAT       0    -- !10.0.1.0/24         !10.0.1.0/24          vdir ORIGINAL vmethod MASQ /*  */ to:192.168.128.102 random-fully
+
+Chain DOCKER (2 references)
+target     prot opt source               destination         
+RETURN     0    --  0.0.0.0/0            0.0.0.0/0           
+
+Chain KUBE-EXT-JYRE7UHIJRI4RYR2 (2 references)
+target     prot opt source               destination         
+KUBE-SVC-JYRE7UHIJRI4RYR2  0    --  10.0.0.0/16          0.0.0.0/0            /* pod traffic for web/hello-world:http external destinations */
+KUBE-MARK-MASQ  0    --  0.0.0.0/0            0.0.0.0/0            /* masquerade LOCAL traffic for web/hello-world:http external destinations */ ADDRTYPE match src-type LOCAL
+KUBE-SVC-JYRE7UHIJRI4RYR2  0    --  0.0.0.0/0            0.0.0.0/0            /* route LOCAL traffic for web/hello-world:http external destinations */ ADDRTYPE match src-type LOCAL
+KUBE-SVL-JYRE7UHIJRI4RYR2  0    --  0.0.0.0/0            0.0.0.0/0           
+
+Chain KUBE-KUBELET-CANARY (0 references)
+target     prot opt source               destination         
+
+Chain KUBE-MARK-MASQ (14 references)
+target     prot opt source               destination         
+MARK       0    --  0.0.0.0/0            0.0.0.0/0            MARK or 0x4000
+
+Chain KUBE-NODEPORTS (1 references)
+target     prot opt source               destination         
+KUBE-EXT-JYRE7UHIJRI4RYR2  6    --  0.0.0.0/0            0.0.0.0/0            /* web/hello-world:http */ tcp dpt:32660
+
+Chain KUBE-POSTROUTING (1 references)
+target     prot opt source               destination         
+RETURN     0    --  0.0.0.0/0            0.0.0.0/0            mark match ! 0x4000/0x4000
+MARK       0    --  0.0.0.0/0            0.0.0.0/0            MARK xor 0x4000
+MASQUERADE  0    --  0.0.0.0/0            0.0.0.0/0            /* kubernetes service traffic requiring SNAT */ random-fully
+
+Chain KUBE-PROXY-CANARY (0 references)
+target     prot opt source               destination         
+
+Chain KUBE-SEP-ASKQ4RDW5CQYLGVG (1 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  0    --  10.0.0.16            0.0.0.0/0            /* kube-system/kube-dns:dns */
+DNAT       17   --  0.0.0.0/0            0.0.0.0/0            /* kube-system/kube-dns:dns */ udp to:10.0.0.16:53
+
+Chain KUBE-SEP-AVR676QTISYHKIZK (1 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  0    --  10.0.0.16            0.0.0.0/0            /* kube-system/kube-dns:metrics */
+DNAT       6    --  0.0.0.0/0            0.0.0.0/0            /* kube-system/kube-dns:metrics */ tcp to:10.0.0.16:9153
+
+Chain KUBE-SEP-CJS3NY33FQZQVR6B (2 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  0    --  10.0.2.8             0.0.0.0/0            /* web/hello-world:http */
+DNAT       6    --  0.0.0.0/0            0.0.0.0/0            /* web/hello-world:http */ tcp to:10.0.2.8:8080
+
+Chain KUBE-SEP-CXGDDX4QVOF45ZKT (1 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  0    --  10.0.0.15            0.0.0.0/0            /* kube-system/kube-dns:metrics */
+DNAT       6    --  0.0.0.0/0            0.0.0.0/0            /* kube-system/kube-dns:metrics */ tcp to:10.0.0.15:9153
+
+Chain KUBE-SEP-DGHBRNWIOA6N7HYW (1 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  0    --  10.0.0.15            0.0.0.0/0            /* kube-system/kube-dns:dns */
+DNAT       17   --  0.0.0.0/0            0.0.0.0/0            /* kube-system/kube-dns:dns */ udp to:10.0.0.15:53
+
+Chain KUBE-SEP-F6UXEH7DKEYTQNZU (1 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  0    --  192.168.128.101      0.0.0.0/0            /* default/kubernetes:https */
+DNAT       6    --  0.0.0.0/0            0.0.0.0/0            /* default/kubernetes:https */ tcp to:192.168.128.101:6443
+
+Chain KUBE-SEP-YTAUYMZXSSEWSM6W (1 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  0    --  10.0.0.16            0.0.0.0/0            /* kube-system/kube-dns:dns-tcp */
+DNAT       6    --  0.0.0.0/0            0.0.0.0/0            /* kube-system/kube-dns:dns-tcp */ tcp to:10.0.0.16:53
+
+Chain KUBE-SEP-Z2HJJPTCHKXNCXMF (1 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  0    --  10.0.0.15            0.0.0.0/0            /* kube-system/kube-dns:dns-tcp */
+DNAT       6    --  0.0.0.0/0            0.0.0.0/0            /* kube-system/kube-dns:dns-tcp */ tcp to:10.0.0.15:53
+
+Chain KUBE-SERVICES (2 references)
+target     prot opt source               destination         
+KUBE-SVC-JYRE7UHIJRI4RYR2  6    --  0.0.0.0/0            10.105.231.199       /* web/hello-world:http cluster IP */ tcp dpt:80
+KUBE-EXT-JYRE7UHIJRI4RYR2  6    --  0.0.0.0/0            192.168.128.15       /* web/hello-world:http external IP */ tcp dpt:80
+KUBE-SVC-NPX46M4PTMTKRN6Y  6    --  0.0.0.0/0            10.96.0.1            /* default/kubernetes:https cluster IP */ tcp dpt:443
+KUBE-SVC-TCOU7JCQXEZGVUNU  17   --  0.0.0.0/0            10.96.0.10           /* kube-system/kube-dns:dns cluster IP */ udp dpt:53
+KUBE-SVC-ERIFXISQEP7F7OF4  6    --  0.0.0.0/0            10.96.0.10           /* kube-system/kube-dns:dns-tcp cluster IP */ tcp dpt:53
+KUBE-SVC-JD5MR3NA4I4DYORP  6    --  0.0.0.0/0            10.96.0.10           /* kube-system/kube-dns:metrics cluster IP */ tcp dpt:9153
+KUBE-NODEPORTS  0    --  0.0.0.0/0            0.0.0.0/0            /* kubernetes service nodeports; NOTE: this must be the last rule in this chain */ ADDRTYPE match dst-type LOCAL
+
+Chain KUBE-SVC-ERIFXISQEP7F7OF4 (1 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  6    -- !10.0.0.0/16          10.96.0.10           /* kube-system/kube-dns:dns-tcp cluster IP */ tcp dpt:53
+KUBE-SEP-Z2HJJPTCHKXNCXMF  0    --  0.0.0.0/0            0.0.0.0/0            /* kube-system/kube-dns:dns-tcp -> 10.0.0.15:53 */ statistic mode random probability 0.50000000000
+KUBE-SEP-YTAUYMZXSSEWSM6W  0    --  0.0.0.0/0            0.0.0.0/0            /* kube-system/kube-dns:dns-tcp -> 10.0.0.16:53 */
+
+Chain KUBE-SVC-JD5MR3NA4I4DYORP (1 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  6    -- !10.0.0.0/16          10.96.0.10           /* kube-system/kube-dns:metrics cluster IP */ tcp dpt:9153
+KUBE-SEP-CXGDDX4QVOF45ZKT  0    --  0.0.0.0/0            0.0.0.0/0            /* kube-system/kube-dns:metrics -> 10.0.0.15:9153 */ statistic mode random probability 0.50000000000
+KUBE-SEP-AVR676QTISYHKIZK  0    --  0.0.0.0/0            0.0.0.0/0            /* kube-system/kube-dns:metrics -> 10.0.0.16:9153 */
+
+Chain KUBE-SVC-JYRE7UHIJRI4RYR2 (3 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  6    -- !10.0.0.0/16          10.105.231.199       /* web/hello-world:http cluster IP */ tcp dpt:80
+KUBE-SEP-CJS3NY33FQZQVR6B  0    --  0.0.0.0/0            0.0.0.0/0            /* web/hello-world:http -> 10.0.2.8:8080 */
+
+Chain KUBE-SVC-NPX46M4PTMTKRN6Y (1 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  6    -- !10.0.0.0/16          10.96.0.1            /* default/kubernetes:https cluster IP */ tcp dpt:443
+KUBE-SEP-F6UXEH7DKEYTQNZU  0    --  0.0.0.0/0            0.0.0.0/0            /* default/kubernetes:https -> 192.168.128.101:6443 */
+
+Chain KUBE-SVC-TCOU7JCQXEZGVUNU (1 references)
+target     prot opt source               destination         
+KUBE-MARK-MASQ  17   -- !10.0.0.0/16          10.96.0.10           /* kube-system/kube-dns:dns cluster IP */ udp dpt:53
+KUBE-SEP-DGHBRNWIOA6N7HYW  0    --  0.0.0.0/0            0.0.0.0/0            /* kube-system/kube-dns:dns -> 10.0.0.15:53 */ statistic mode random probability 0.50000000000
+KUBE-SEP-ASKQ4RDW5CQYLGVG  0    --  0.0.0.0/0            0.0.0.0/0            /* kube-system/kube-dns:dns -> 10.0.0.16:53 */
+
+Chain KUBE-SVL-JYRE7UHIJRI4RYR2 (1 references)
+target     prot opt source               destination         
+KUBE-SEP-CJS3NY33FQZQVR6B  0    --  0.0.0.0/0            0.0.0.0/0            /* web/hello-world:http -> 10.0.2.8:8080 */

@@ -29,7 +29,7 @@ create 3 hosts in virtualbox
 * disk: 50gb
 
 boot the hosts with the coreos live cd and install
-`coreos-installer install /dev/sda --igntion-url https://your-website-here/k8s-setup.ign`
+`sudo coreos-installer install /dev/sda --igntion-url https://your-website-here/k8s-setup.ign`
 
 ===
 ansible

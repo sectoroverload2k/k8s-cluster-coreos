@@ -1,0 +1,21 @@
+[Unit]
+Description=Kubernetes Kubelet
+Documentation=https://github.com/kubernetes/kubernetes
+After=docker.service
+Requires=docker.service
+
+[Service]
+ExecStart=/usr/local/bin/kubelet \
+  --bootstrap-kubeconfig="/var/lib/kubelet/bootstrap-kubeconfig" \
+  --config=/var/lib/kubelet/kubelet-config.yaml \
+  --kubeconfig=/var/lib/kubelet/kubeconfig \
+  --cert-dir=/var/lib/kubelet/pki/ \
+  --rotate-certificates=true \
+  --rotate-server-certificates=true \
+  --register-node=true \
+  --v=2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

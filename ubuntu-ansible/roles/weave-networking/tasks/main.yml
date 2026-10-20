@@ -1,0 +1,36 @@
+---
+- name: get kubectl version hash
+  block:
+  
+  - shell: |
+      kubectl version | base64 | tr -d '\n'
+    register: kubectlversionhash
+
+#  - get_url:
+#      url: "https://github.com/weaveworks/weave/releases/download/{{ weave_version }}/{{ item }}"
+#      dest: "{{ downloads_dir }}/{{ item }}"
+#    with_items:
+#      - weave-daemonset-k8s.yaml
+#      - weave-daemonset-k8s-1.9.yaml
+#      - weave-daemonset-k8s-1.8.yaml
+#      - weave-daemonset-k8s-1.11.yaml
+
+  - get_url:
+      url: https://github.com/weaveworks/weave/releases/download/v2.6.5/weave-daemonset-k8s-1.6.yaml
+      dest: "{{ downloads_dir }}/"
+
+  delegate_to: localhost
+  run_once: true
+
+
+- copy:
+    src: "{{ downloads_dir }}/weave-daemonset-k8s-1.8.yaml"
+    dest: "{{ downloads_dir }}/"
+
+#- name: apply weave-daemonset
+#  block:
+
+#  - command: kubectl apply -f "{{ downloads_dir }}/weave-daemonset-k8s-1.6.yaml"
+  
+
+#  run_once: true

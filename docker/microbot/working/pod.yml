@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    cni.projectcalico.org/containerID: cacf54a332582e664f7bc4fb81d9bd09b1779eef6f37053b468b4f0f7c2474ef
+    cni.projectcalico.org/podIP: 10.1.166.140/32
+    cni.projectcalico.org/podIPs: 10.1.166.140/32
+  creationTimestamp: "2024-02-10T08:35:11Z"
+  generateName: microbot-66f488557d-
+  labels:
+    app: microbot
+    pod-template-hash: 66f488557d
+  name: microbot-66f488557d-69mt5
+  namespace: default
+  ownerReferences:
+  - apiVersion: apps/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: ReplicaSet
+    name: microbot-66f488557d
+    uid: fe73f7fd-fdc0-4d79-98a9-e6a55e6e35e4
+  resourceVersion: "5555"
+  uid: f780f8ca-b993-43be-9c5b-6c8526c2e7cf
+spec:
+  containers:
+  - image: dontrebootme/microbot:v1
+    imagePullPolicy: IfNotPresent
+    name: microbot
+    resources: {}
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-v5kw8
+      readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  nodeName: node1
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  restartPolicy: Always
+  schedulerName: default-scheduler
+  securityContext: {}
+  serviceAccount: default
+  serviceAccountName: default
+  terminationGracePeriodSeconds: 30
+  tolerations:
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
+  volumes:
+  - name: kube-api-access-v5kw8
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3607
+          path: token
+      - configMap:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
+status:
+  conditions:
+  - lastProbeTime: null
+    lastTransitionTime: "2024-02-10T08:35:11Z"
+    status: "True"
+    type: Initialized
+  - lastProbeTime: null
+    lastTransitionTime: "2024-02-10T08:35:14Z"
+    status: "True"
+    type: Ready
+  - lastProbeTime: null
+    lastTransitionTime: "2024-02-10T08:35:14Z"
+    status: "True"
+    type: ContainersReady
+  - lastProbeTime: null
+    lastTransitionTime: "2024-02-10T08:35:11Z"
+    status: "True"
+    type: PodScheduled
+  containerStatuses:
+  - containerID: containerd://7d0a4b552743c46a11b2c4d333478107e72e35e6ab0312ee4502de816c6d6e24
+    image: docker.io/dontrebootme/microbot:v1
+    imageID: sha256:899ceb044bf694340a22d71a28f4fff64c8197cee2ed7badde83e0032118970a
+    lastState: {}
+    name: microbot
+    ready: true
+    restartCount: 0
+    started: true
+    state:
+      running:
+        startedAt: "2024-02-10T08:35:13Z"
+  hostIP: 192.168.128.121
+  phase: Running
+  podIP: 10.1.166.140
+  podIPs:
+  - ip: 10.1.166.140
+  qosClass: BestEffort
+  startTime: "2024-02-10T08:35:11Z"

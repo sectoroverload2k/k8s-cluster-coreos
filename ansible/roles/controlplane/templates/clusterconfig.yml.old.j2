@@ -1,0 +1,23 @@
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: v1.28.2
+clusterName: {{ clustername }}
+controllerManager:
+  extraArgs: # specify a R/W directory for FlexVolumes (cluster won't work without this even though we use PVs)
+    flex-volume-plugin-dir: "/etc/kubernetes/kubelet-plugins/volume/exec"
+networking: # pod subnet definition
+  #podSubnet: {{ podsubnet }}
+  #serviceSubnet: {{ servicesubnet }}
+  dnsDomain: {{ dnsdomain }}
+#controlPlaneEndpoint: "{{ hostvars[inventory_hostname]['ansible_enp0s3']['ipv4']['address'] }}:6443"
+# ---
+# apiVersion: kubeadm.k8s.io/v1beta3
+# kind: InitConfiguration
+# ---
+# apiVersion: kubelet.config.k8s.io/v1beta1
+# kind: KubeletConfiguration
+# # kubelet specific options here
+# ---
+# apiVersion: kubeproxy.config.k8s.io/v1alpha1
+# kind: KubeProxyConfiguration
+# # kube-proxy specific options here

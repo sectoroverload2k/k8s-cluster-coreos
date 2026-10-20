@@ -1,0 +1,87 @@
+---
+- systemd_service:
+    name: etcd
+    state: stopped
+  ignore_errors: true
+
+- file:
+    dest: /var/lib/etcd/member
+    state: absent
+
+- set_fact:
+    etcd_prefix: "etcd-{{ etcd_version }}-linux-amd64"
+
+- block:
+
+  - file:
+      path: "{{ downloads_dir }}"
+      state: directory
+
+  - name: download etcd
+    get_url:
+      url: "https://github.com/coreos/etcd/releases/download/{{ etcd_version }}/{{ etcd_prefix }}.tar.gz"
+      dest: "{{ downloads_dir }}/etcd.tar.gz"
+
+  - shell: |
+      /usr/bin/tar zxvf {{ downloads_dir }}/etcd.tar.gz \
+      -C {{ downloads_dir }}/
+    args:
+      creates: "{{ downloads_dir }}/{{ etcd_prefix }}"
+
+  delegate_to: 'localhost'
+  run_once: true
+
+
+- name: copy etcd to remote servers
+  copy:
+    src: "{{ downloads_dir }}/{{ etcd_prefix }}/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  with_items:
+    - etcd
+    - etcdctl
+    - etcdutl  
+
+- file:
+    state: directory
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  with_items:
+    - /etc/etcd
+
+- file:
+    state: directory
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: '0700'
+  with_items:
+    - /var/lib/etcd
+
+- copy:
+    src: "{{ item }}"
+    dest: /etc/etcd/
+  with_items:
+    - "{{ ca_crtfile }}"
+    - "{{ components.etcd.keyfile }}"
+    - "{{ components.etcd.crtfile }}"
+
+- template:
+    src: "templates/etcd.service.j2"
+    dest: /etc/systemd/system/etcd.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- systemd_service:
+    daemon_reload: true
+    name: etcd
+
+- systemd_service:
+    name: etcd
+    enabled: true
+    state: restarted

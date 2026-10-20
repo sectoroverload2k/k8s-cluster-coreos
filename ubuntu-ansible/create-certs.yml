@@ -1,0 +1,89 @@
+---
+- debug: var=item
+
+- name: "create private key"
+  community.crypto.openssl_privatekey:
+    path: "{{ item.value.keyfile }}"
+    size: 2048
+    type: "RSA"
+  register: privatekey
+
+- name: "generate basic csr"
+  community.crypto.openssl_csr:
+    privatekey_path: "{{ item.value.keyfile }}"
+    subject: "{{ item.value.subject }}"
+    path: "{{ item.value.csrfile }}"
+    #basic_constraints:
+    #  - "CA:FALSE"
+    #basic_constraints_critical: true
+    #key_usage_critical: true
+    #key_usage:
+    #  - keyEncipherment
+    #  - dataEncipherment
+    #  - nonRepudiation
+    #  - digitalSignature
+    #  - keyCertSign
+    #  - digitalSignature
+    #extended_key_usage:
+    #  - serverAuth
+    #  - clientAuth
+  register: csr
+  when: item.value.use_san is undefined
+
+- name: "generate SAN csr"
+  block:
+
+  - set_fact:
+      masters: "{{ groups['masters'] }}"
+      loadbalancers: "{{ groups['loadbalancers'] }}"
+
+  - set_fact:
+      master_ips: "{{ masters | map('extract', hostvars, ['ansible_default_ipv4','address']) }}"
+      loadbalancer_ips: "{{ loadbalancers | map('extract', hostvars, ['ansible_default_ipv4','address']) }}"
+
+  - set_fact:
+      csr_ips: "{{ (master_ips + loadbalancer_ips + service_ips) | map('regex_replace', '^', 'IP:') | list }}"
+      csr_dns: "{{ kubernetes_domains | map('regex_replace', '^', 'DNS:') | list }}"
+
+  - debug: var=csr_ips
+  - debug: var=csr_dns
+
+  - set_fact:
+      csr_san: "{{ (csr_ips + csr_dns) | join(',') }}"
+  - debug: var=csr_san
+
+  - name: "generate csr with SAN"
+    community.crypto.openssl_csr:
+      privatekey_path: "{{ item.value.keyfile }}"
+      subject: "{{ item.value.subject }}"
+      path: "{{ item.value.csrfile }}"
+      subject_alt_name: "{{ csr_san }}"
+      #basic_constraints:
+      #  - "CA:TRUE"
+      #basic_constraints_critical: true
+      #key_usage_critical: true
+      #key_usage:
+      #  - keyEncipherment
+      #  - dataEncipherment
+      #  - nonRepudiation
+      #  - digitalSignature
+      #  - keyCertSign
+      #  - digitalSignature
+      #extended_key_usage:
+      #  - serverAuth
+      #  - clientAuth
+    register: csr
+
+  when: item.value.use_san is defined and item.value.use_san == true
+
+- name: "sign csr with ca key"
+  community.crypto.x509_certificate:
+    path: "{{ item.value.crtfile }}"
+    csr_path: "{{ item.value.csrfile }}"
+    ownca_path: "{{ ca_crtfile }}"
+    ownca_privatekey_path: "{{ ca_keyfile }}"
+    ownca_not_before: "-1d"
+    ownca_not_after: "{{ cert_not_after }}"
+    provider: ownca
+  register: signedcert
+

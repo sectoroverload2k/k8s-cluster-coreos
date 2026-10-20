@@ -1,0 +1,14 @@
+---
+- hosts: nodes
+  become: true
+  tasks:
+    - name: disable selinux
+      lineinfile:
+        path: /etc/selinux/config
+        regexp: '^SELINUX='
+        line: SELINUX=disabled
+      notify: reboot
+  handlers:
+    - name: reboot
+      command: reboot
+      listen: reboot

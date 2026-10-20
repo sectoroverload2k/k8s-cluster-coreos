@@ -1,0 +1,44 @@
+---
+- hosts: all
+  gather_facts: true
+  become: false
+  vars_files: vars.yml
+  tasks:
+
+
+  #
+  # CREATE ENCRYPTION CONFIG
+  #
+  - name: check if encryption already configured
+    stat:
+      path: "{{ configs_dir }}/encryption-config.yaml"
+    register: encryption_configured
+
+  - block:
+
+    - name: create encryption key
+      shell: |
+        head -c 32 /dev/urandom | base64
+      register: encryption_key
+
+    - template:
+        src: templates/encryption-config.yaml.j2
+        dest: "{{ configs_dir }}/encryption-config.yaml"
+
+    when: 
+      - inventory_hostname == 'localhost'
+      - not encryption_configured.stat.exists
+
+  #
+  # COPY TO MASTERS
+  #
+  - block:
+    - file:
+        path: "{{ configs_dir }}"
+        state: directory
+
+    - name: copy encryption to masters
+      copy:
+        src: "{{ configs_dir }}/encryption-config.yaml"
+        dest: "{{ configs_dir }}/encryption-config.yaml"
+    when: inventory_hostname in groups['masters']

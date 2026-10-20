@@ -1,0 +1,209 @@
+---
+
+
+- name: update grup configs
+  block:
+  - lineinfile: 
+      path: /etc/default/grub
+      regexp: '^GRUB_CMDINE_LINUX='
+      line: GRUB_CMDLINE_LINUX="systemd.unified_cgroup_hierarchy=0"
+    register: grubfile
+    notify: "update grup config"
+
+  when: false
+  tags: grup
+
+
+- copy:
+    src: files/kubernetes.conf
+    dest: /etc/modules-load.d/kubernetes.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- command: "modprobe {{ item }}"
+  with_items:
+    - overlay
+    - br_netfilter
+
+- copy:
+    src: files/sysctl-kubernetes.conf
+    dest: /etc/sysctl.d/kubernetes.conf
+    owner: root
+    group: root
+    mode: '0644'
+  register: sysctlconfig
+
+- command: "sysctl --system"
+  when: sysctlconfig.changed
+
+
+# - name: setup cpu allocations
+#   block:
+#     - name: setup cpu allocations
+#       file:
+#         path: "{{ item }}"
+#         state: directory
+#         owner: root
+#         group: root
+#         mode: '0755'
+#       with_items:
+#          - "/sys/fs/cgroup/cpu,cpuacct"
+# 
+#     - name: mount
+#       mount:
+#         path: "/sys/fs/cgroup/cpu,cpuacct"
+#         state: mounted
+#         fstype: cgroup
+#         opts: "cpu,cpuacct"
+#   tags: mounts
+
+
+
+- name: install binaries
+  block:
+
+  - file:
+      path: "{{ downloads_dir }}"
+      state: directory
+
+  - name: download kubectl
+    get_url:
+      url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubernetes_version }}/bin/linux/amd64/{{ item }}"
+      dest: "{{ downloads_dir }}/{{ item }}"
+      owner: root
+      group: root
+      mode: '0755'
+      force: true
+    with_items:
+      - kubectl
+      - kube-proxy
+      - kubelet
+
+  - copy: 
+      remote_src: true
+      src: "{{ downloads_dir }}/{{ item }}"
+      dest: "/usr/local/bin/{{ item }}"
+      owner: root
+      group: root
+      mode: '0755'
+    with_items:
+      - kubectl
+      - kube-proxy
+      - kubelet
+
+  - file:
+      path: "{{ item }}"
+      state: directory
+    with_items:
+      - /etc/cni/net.d
+      - /opt/cni/bin
+      - /var/lib/kubelet
+      - /var/lib/kube-proxy
+      - /var/lib/kubernetes
+      - /var/run/kubernetes
+
+  - block:
+    - copy:
+        src: "{{ ca_crtfile }}"
+        dest: /var/lib/kubernetes/
+        owner: root
+        group: root
+        mode: '0644'
+
+    - copy:
+        src: "{{ item }}"
+        dest: "/var/lib/kubelet/{{ item | basename }}"
+        owner: root
+        group: root
+        mode: '0644'
+      with_items:
+        - "{{ certs_dir }}/{{ inventory_hostname }}.crt"
+        - "{{ certs_dir }}/{{ inventory_hostname }}.key"
+    tags: certs
+
+  - copy:
+      src: "{{ configs_dir }}/{{ inventory_hostname }}.kubeconfig"
+      dest: "/var/lib/kubelet/{{ inventory_hostname }}.kubeconfig"
+      owner: root
+      group: root
+      mode: '0644'
+
+  - copy:
+      src: "{{ configs_dir }}/kube-proxy.kubeconfig"
+      dest: "/var/lib/kube-proxy/kube-proxy.kubeconfig"
+      owner: root
+      group: root
+      mode: '0644'
+
+#  - command: "kubectl version --client"
+#    register: kubectl_version
+
+#  - debug: var=kubectl_version
+
+  when: true
+  tags: install
+
+- name: configure kubelet
+  block:
+
+  #
+  # KUBELET CONFIG
+  #
+  - template:
+      src: templates/kubelet-config.yaml.j2
+      dest: /var/lib/kubelet/kubelet-config.yaml
+      owner: root
+      group: root
+      mode: '0644'
+
+  #
+  # KUBE-PROXY CONFIG
+  #
+  - template:
+      src: templates/kube-proxy-config.yaml.j2
+      dest: /var/lib/kube-proxy/kube-proxy-config.yaml
+      owner: root
+      group: root
+      mode: '0644'
+
+
+  #
+  # SYSTEMD SERVICES
+  #
+  - name: "configure systemd service"
+    template:
+      src: "templates/{{ item }}.service.j2"
+      dest: "/etc/systemd/system/{{ item }}.service"
+      owner: root
+      group: root
+      mode: '0644'
+    with_items:
+      - kubelet
+      - kube-proxy
+
+
+
+  when: true
+  tags: configure
+
+
+- name: "reload systemd configs"
+  systemd_service:
+    daemon_reload: true
+    name: "{{ item }}"
+  with_items:
+    - kubelet
+    - kube-proxy
+
+- name: "restart services"
+  systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: restarted
+  with_items:
+    - kubelet
+    - kube-proxy
+    #- docker
+
+

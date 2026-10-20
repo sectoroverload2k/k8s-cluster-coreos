@@ -1,0 +1,90 @@
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+KUBE-ROUTER-SERVICES  0    --  0.0.0.0/0            0.0.0.0/0            /* handle traffic to IPVS service IPs in custom chain */ match-set kube-router-svip dst
+KUBE-PROXY-FIREWALL  0    --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes load balancer firewall */
+KUBE-NODEPORTS  0    --  0.0.0.0/0            0.0.0.0/0            /* kubernetes health check service ports */
+KUBE-EXTERNAL-SERVICES  0    --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes externally-visible service portals */
+KUBE-FIREWALL  0    --  0.0.0.0/0            0.0.0.0/0           
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination         
+ACCEPT     0    --  0.0.0.0/0            0.0.0.0/0            /* allow outbound node port traffic on node interface with which node ip is associated */
+ACCEPT     0    --  0.0.0.0/0            0.0.0.0/0            /* allow inbound traffic to pods */
+ACCEPT     0    --  0.0.0.0/0            0.0.0.0/0            /* allow outbound traffic from pods */
+KUBE-PROXY-FIREWALL  0    --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes load balancer firewall */
+KUBE-FORWARD  0    --  0.0.0.0/0            0.0.0.0/0            /* kubernetes forwarding rules */
+KUBE-SERVICES  0    --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes service portals */
+KUBE-EXTERNAL-SERVICES  0    --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes externally-visible service portals */
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination         
+KUBE-PROXY-FIREWALL  0    --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes load balancer firewall */
+KUBE-SERVICES  0    --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes service portals */
+KUBE-FIREWALL  0    --  0.0.0.0/0            0.0.0.0/0           
+
+Chain DOCKER (0 references)
+target     prot opt source               destination         
+
+Chain DOCKER-ISOLATION-STAGE-1 (0 references)
+target     prot opt source               destination         
+
+Chain DOCKER-ISOLATION-STAGE-2 (0 references)
+target     prot opt source               destination         
+
+Chain DOCKER-USER (0 references)
+target     prot opt source               destination         
+
+Chain KUBE-EXTERNAL-SERVICES (2 references)
+target     prot opt source               destination         
+
+Chain KUBE-FIREWALL (2 references)
+target     prot opt source               destination         
+DROP       0    -- !127.0.0.0/8          127.0.0.0/8          /* block incoming localnet connections */ ! ctstate RELATED,ESTABLISHED,DNAT
+
+Chain KUBE-FORWARD (1 references)
+target     prot opt source               destination         
+DROP       0    --  0.0.0.0/0            0.0.0.0/0            ctstate INVALID
+ACCEPT     0    --  0.0.0.0/0            0.0.0.0/0            /* kubernetes forwarding rules */ mark match 0x4000/0x4000
+ACCEPT     0    --  0.0.0.0/0            0.0.0.0/0            /* kubernetes forwarding conntrack rule */ ctstate RELATED,ESTABLISHED
+
+Chain KUBE-KUBELET-CANARY (0 references)
+target     prot opt source               destination         
+
+Chain KUBE-NODEPORTS (1 references)
+target     prot opt source               destination         
+ACCEPT     6    --  0.0.0.0/0            0.0.0.0/0            /* web/hello-world:http health check node port */ tcp dpt:31797
+
+Chain KUBE-NWPLCY-DEFAULT (0 references)
+target     prot opt source               destination         
+
+Chain KUBE-NWPLCY-LGKIJ6F6VIF52TQ2 (0 references)
+target     prot opt source               destination         
+
+Chain KUBE-POD-FW-32DQHJAJFZBRVJNS (0 references)
+target     prot opt source               destination         
+
+Chain KUBE-PROXY-CANARY (0 references)
+target     prot opt source               destination         
+
+Chain KUBE-PROXY-FIREWALL (3 references)
+target     prot opt source               destination         
+
+Chain KUBE-ROUTER-FORWARD (0 references)
+target     prot opt source               destination         
+
+Chain KUBE-ROUTER-INPUT (0 references)
+target     prot opt source               destination         
+
+Chain KUBE-ROUTER-OUTPUT (0 references)
+target     prot opt source               destination         
+
+Chain KUBE-ROUTER-SERVICES (1 references)
+target     prot opt source               destination         
+ACCEPT     1    --  0.0.0.0/0            0.0.0.0/0            /* allow icmp echo requests to service IPs */ icmptype 8
+ACCEPT     1    --  0.0.0.0/0            0.0.0.0/0            /* allow icmp ttl exceeded messages to service IPs */ icmptype 11
+ACCEPT     1    --  0.0.0.0/0            0.0.0.0/0            /* allow icmp destination unreachable messages to service IPs */ icmptype 3
+ACCEPT     0    --  0.0.0.0/0            0.0.0.0/0            /* allow input traffic to ipvs services */ match-set kube-router-svip-prt dst,dst
+REJECT     0    --  0.0.0.0/0            0.0.0.0/0            /* reject all unexpected traffic to service IPs */ ! match-set kube-router-local-ips dst reject-with icmp-port-unreachable
+
+Chain KUBE-SERVICES (2 references)
+target     prot opt source               destination         

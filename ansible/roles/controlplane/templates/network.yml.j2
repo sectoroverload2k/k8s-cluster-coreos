@@ -1,0 +1,56 @@
+#---
+#apiVersion: v1
+#kind: ConfigMap
+#metadata:
+#  name: config
+#  namespace: metallb-system
+#data:
+#  config: |
+#    address-pools:
+#    - name: default
+#      protocol: layer2
+#      addresses:
+#      - 192.168.69.50-149
+
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: podsubnet-pool
+  namespace: metallb-system
+spec:
+  protocol: layer2
+  autoAssign: true
+  addresses:
+    - {{ podsubnet }}
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: servicesubnet-pool
+  namespace: metallb-system
+spec:
+  autoAssign: true
+  avoidBuggyIPs: true
+  addresses:
+    - {{ servicesubnet }}
+
+#---
+#apiVersion: metallb.io/v1beta1
+#kind: L2Advertisement
+#metadata:
+#  name: l2advert
+#  namespace: metallb-system
+#spec:
+#  ipAddressPools:
+#    - home-pool
+#
+#---
+#apiVersion: metallb.io/v1beta1
+#kind: BGPAdvertisement
+#metadata:
+#  name: external
+#  namespace: metallb-system
+#spec:
+#  ipAddressPools:
+#    - home-pool

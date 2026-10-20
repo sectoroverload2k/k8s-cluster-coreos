@@ -1,0 +1,12 @@
+---
+# https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
+- name: copy calico config
+  copy:
+    src: files/network-calico.yml
+    dest: /root/network-calico.yml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: apply calico network
+  command: kubectl apply -f /root/network-calico.yml

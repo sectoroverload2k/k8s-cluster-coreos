@@ -1,0 +1,64 @@
+---
+- hosts: all
+  gather_facts: true
+  become: false
+  vars_files: vars.yml
+
+  tasks:
+
+    - block:
+      - set_fact:
+          loadbalancer_ip: "{{ groups['loadbalancers'] | map('extract', hostvars, ['ansible_default_ipv4','address']) | first }}"
+      - debug: var=loadbalancer_ip
+  
+      - file: 
+          path: "{{ configs_dir }}"
+          state: directory
+      delegate_to: localhost
+
+
+    - set_fact:
+        token: "{{ lookup('ansible.builtin.file', '{{ configs_dir }}/tls-token') }}"
+
+    - debug: var=token
+
+    #
+    # WORKER KUBELET CONFIG
+    #
+    - name: setup kubelet configs
+      block:
+
+      - file: 
+          path: "{{ tlsconfigs_dir }}"
+          state: directory
+
+      - template:
+          src: "templates/tls-bootstrap-kubeconfig.j2"
+          dest: "{{ tlsconfigs_dir }}/bootstrap-kubeconfig"
+
+      - template:
+          src: "templates/tls-kubelet-config.yaml.j2"
+          dest: "{{ tlsconfigs_dir }}/kubelet-config.yaml"
+
+      - template:
+          src: "templates/tls-kubelet.service.j2"
+          dest: "{{ tlsconfigs_dir }}/kubelet.service"
+
+
+      tags: kubelet
+      delegate_to: localhost
+      run_once: true
+      when: 
+        - inventory_hostname in groups['nodes']
+        - inventory_hostname == 'node3'
+
+#
+#
+#
+# needs more work
+#
+# https://github.com/ddometita/mmumshad-kubernetes-the-hard-way/blob/master/docs/10-tls-bootstrapping-kubernetes-workers.md
+#
+# continue at step 7 - kubernetes proxy
+#
+#

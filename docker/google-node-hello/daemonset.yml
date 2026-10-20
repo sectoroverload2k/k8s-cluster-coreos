@@ -1,0 +1,36 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: web
+
+---
+# The DaemonSet "nginx" is invalid: spec.template.metadata.labels: Invalid value: map[string]string{"app":"nginx-reverse-proxy"}: `selector` does not match template `labels`
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nginx-reverse-proxy
+  namespace: web
+  labels:
+    app: nginx-reverse-proxy
+spec:
+  selector:
+    matchLabels:
+      app: nginx-reverse-proxy
+  template:
+    metadata:
+      labels:
+        app: nginx-reverse-proxy
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:  # allow a Pod instance to run on Master - optional
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+      - image: gcr.io/google-samples/node-hello:1.0
+        name: nginx
+        ports:
+        - name: http
+          containerPort: 80

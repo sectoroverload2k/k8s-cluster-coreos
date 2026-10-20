@@ -1,0 +1,233 @@
+#---
+#- hosts: masters
+#  gather_facts: true
+#  become: true
+#  vars_files: vars.yml
+#  
+#  tasks:
+---
+- hosts: all
+  gather_facts: true
+  become: false
+  vars_files: vars.yml
+  tasks:
+
+#    - file:
+#        state: directory
+#        path: "{{ certs_dir }}"
+#
+#    - name: copy ssl certs
+#      copy:
+#        src: "{{ item }}"
+#        dest: "{{ item }}"
+#      with_items:
+#        - "{{ ca_crtfile }}"
+#        - "{{ ca_keyfile }}"
+#        - "{{ components.apiserver.keyfile }}"
+#        - "{{ components.apiserver.crtfile }}"
+#        - "{{ components.service.keyfile }}"
+#        - "{{ components.service.crtfile }}"
+#        - "{{ components.etcd.keyfile }}"
+#        - "{{ components.etcd.crtfile }}"
+#        - "{{ components.proxy.keyfile }}"
+#        - "{{ components.proxy.crtfile }}"
+#        - "{{ components.controller.keyfile }}"
+#        - "{{ components.controller.crtfile }}"
+
+    - block:
+      - set_fact:
+          loadbalancer_ip: "{{ groups['loadbalancers'] | map('extract', hostvars, ['ansible_default_ipv4','address']) | first }}"
+      - debug: var=loadbalancer_ip
+  
+      - file: 
+          path: "{{ configs_dir }}"
+          state: directory
+      when: inventory_hostname == 'localhost'
+
+    #
+    # KUBE-PROXY
+    #
+    - name: setup kube-proxy
+      block:
+      - name: set-cluster
+        shell: |
+          kubectl config set-cluster {{ cluster_name }} \
+          --certificate-authority={{ ca_crtfile }} \
+          --embed-certs=true \
+          --server=https://{{ loadbalancer_ip }}:6443 \
+          --kubeconfig={{ configs_dir }}/kube-proxy.kubeconfig
+
+      - name: set-credentials
+        shell: |
+          kubectl config set-credentials system:kube-proxy \
+          --client-certificate={{ components.proxy.crtfile }} \
+          --client-key={{ components.proxy.keyfile }} \
+          --embed-certs=true \
+          --kubeconfig={{ configs_dir }}/kube-proxy.kubeconfig
+
+      - name: set-context
+        shell: |
+          kubectl config set-context default \
+          --cluster={{ cluster_name }} \
+          --user=system:kube-proxy \
+          --kubeconfig={{ configs_dir }}/kube-proxy.kubeconfig
+
+      - name: use-context
+        shell: |
+          kubectl config use-context default \
+          --kubeconfig={{ configs_dir }}/kube-proxy.kubeconfig
+
+      tags: proxy
+      run_once: true
+      when: inventory_hostname == 'localhost'
+
+
+    #
+    # KUBE-CONTROLLER-MANAGER
+    #
+    - name: setup kube-controller-manager
+      block:
+
+      - name: set-cluster
+        shell: |
+          kubectl config set-cluster {{ cluster_name }} \
+          --certificate-authority={{ ca_crtfile }} \
+          --embed-certs=true \
+          --server=https://127.0.0.1:6443 \
+          --kubeconfig={{ configs_dir }}/kube-controller-manager.kubeconfig
+
+      - name: set-credentials
+        shell: |
+          kubectl config set-credentials system:kube-controller-manager \
+          --client-certificate={{ components.controller.crtfile }} \
+          --client-key={{ components.controller.keyfile }} \
+          --embed-certs=true \
+          --kubeconfig={{ configs_dir }}/kube-controller-manager.kubeconfig
+
+      - name: set-context
+        shell: |
+          kubectl config set-context default \
+          --cluster={{ cluster_name }} \
+          --user=system:kube-controller-manager \
+          --kubeconfig={{ configs_dir }}/kube-controller-manager.kubeconfig
+
+      - name: use-context
+        shell: |
+          kubectl config set-context default \
+          --kubeconfig={{ configs_dir }}/kube-controller-manager.kubeconfig
+
+      tags: controller
+      run_once: true
+      when: inventory_hostname == 'localhost'
+
+
+    #
+    # KUBE-SCHEDULER
+    #
+
+    - name: setup kube-scheduler
+      block:
+
+      - name: set-cluster
+        shell: |
+          kubectl config set-cluster {{ cluster_name }} \
+          --certificate-authority={{ ca_crtfile }} \
+          --embed-certs=true \
+          --server=https://127.0.0.1:6443 \
+          --kubeconfig={{ configs_dir }}/kube-scheduler.kubeconfig
+
+      - name: set-credentials
+        shell: |
+          kubectl config set-credentials system:kube-scheduler \
+          --client-certificate={{ components.scheduler.crtfile }} \
+          --client-key={{ components.scheduler.keyfile }} \
+          --embed-certs=true \
+          --kubeconfig={{ configs_dir }}/kube-scheduler.kubeconfig
+
+      - name: set-context
+        shell: |
+          kubectl config set-context default \
+          --cluster={{ cluster_name }} \
+          --user=system:kube-scheduler \
+          --kubeconfig={{ configs_dir }}/kube-scheduler.kubeconfig
+
+      - name: use-context
+        shell: |
+          kubectl config use-context default \
+          --kubeconfig={{ configs_dir }}/kube-scheduler.kubeconfig
+
+      tags: scheduler
+      run_once: true
+      when: inventory_hostname == 'localhost'
+
+
+    #
+    # ADMIN
+    #
+    - name: setup admin 
+      block:
+      - name: set-cluster
+        shell: |
+          kubectl config set-cluster {{ cluster_name }} \
+          --certificate-authority={{ ca_crtfile }} \
+          --embed-certs=true \
+          --server=https://127.0.0.1:6443 \
+          --kubeconfig={{ configs_dir }}/admin.kubeconfig
+
+      - name: set-credentials
+        shell: |
+          kubectl config set-credentials admin \
+          --client-certificate={{ components.admin.crtfile }} \
+          --client-key={{ components.admin.keyfile }} \
+          --embed-certs=true \
+          --kubeconfig={{ configs_dir }}/admin.kubeconfig
+
+      - name: set-context
+        shell: |
+          kubectl config set-context default \
+          --cluster={{ cluster_name }} \
+          --user=admin \
+          --kubeconfig={{ configs_dir }}/admin.kubeconfig
+
+      - name: use-context
+        shell: |
+          kubectl config use-context default \
+          --kubeconfig={{ configs_dir }}/admin.kubeconfig
+
+      tags: admin
+      run_once: true
+      when: inventory_hostname == 'localhost'
+
+
+
+    #
+    # DEPLOY CONFIGS
+    #
+
+    - block:
+
+      - file:
+          state: directory
+          path: "{{ configs_dir }}"
+
+      - copy:
+          src: "{{ configs_dir }}/kube-proxy.kubeconfig"
+          dest: "{{ configs_dir }}/kube-proxy.kubeconfig"
+      when: inventory_hostname in groups['nodes']
+
+    - block:
+      - file:
+          state: directory
+          path: "{{ configs_dir }}"
+      - copy: 
+          src: "{{ configs_dir }}/{{ item }}"
+          dest: "{{ configs_dir }}/{{ item }}"
+        with_items:
+          - admin.kubeconfig
+          - kube-controller-manager.kubeconfig
+          - kube-scheduler.kubeconfig
+
+      when: inventory_hostname in groups['nodes']
+      tags: deploy-configs
+
+
